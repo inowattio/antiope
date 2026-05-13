@@ -1,37 +1,43 @@
-version: '3'
 services:
   keycloak:
- 
-
+    build:
+      context: .
+      dockerfile: keycloak.dockerfile
     image: keycloak-kafka
     ports:
-      - "8080:8080"
+      - '8080:8080'
     environment:
-      KEYCLOAK_ADMIN: admin 
+      KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       KAFKA_CLIENT_ID: keycloak
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      KAFKA_CONFIG: Wwp7ICJyZWFsbU5hbWUiOiAicmVhbG0xIiwKICAiYnJva2VySXAiOiAia2Fma2EiLAogICJicm9rZXJQb3J0IjogIjkwOTIiLAogICJ0b3BpYyI6ICJ0b3BpYzEiCn0sCnsgInJlYWxtTmFtZSI6ICJyZWFsbTIiLAogICJicm9rZXJJcCI6ICJrYWZrYTIiLAogICJicm9rZXJQb3J0IjogIjkwOTMiLAogICJ0b3BpYyI6ICJ0b3BpYzIsdG9waWMzIiAgIAp9Cl0KCg==
+      ANTIOPE_CONFIG: Wwp7ICJyZWFsbU5hbWUiOiAicmVhbG0xIiwKICAiYnJva2VySXAiOiAia2Fma2EiLAogICJicm9rZXJQb3J0IjogIjkwOTIiLAogICJ0b3BpYyI6ICJ0b3BpYzEiLAoiY2xpZW50SWQiOiAicmVhbG0xIgoKfSwKeyAicmVhbG1OYW1lIjogInJlYWxtMiIsCiAgImJyb2tlcklwIjogImthZmthMiIsCiAgImJyb2tlclBvcnQiOiAiOTA5MyIsCiAgInRvcGljIjogInRvcGljMix0b3BpYzMiLAoiY2xpZW50SWQiOiAicmVhbG0yIiAgIAp9Cl0K
+      KAFKA_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      KAFKA_SASL_MECHANISM: SCRAM-SHA-512
+      KAFKA_SASL_JAAS_CONFIG: org.apache.kafka.common.security.scram.ScramLoginModule required username="admin" password="admin";
     command: start-dev
-    
+
   zookeeper:
-    restart: always
-    image: bitnami/zookeeper:lates
-    ports:
-      - "2181:2181"
-    environment:    
+    image: 'confluentinc/cp-zookeeper:7.2.6'
+    environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
-      
+      - ZOOKEEPER_CLIENT_PORT=2181
+    healthcheck:
+      test: ['CMD', 'sh', '-c', 'nc -z -v -w5 localhost 2181']
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   kafka:
     image: 'confluentinc/cp-kafka:7.2.6'
     container_name: kafka
     ports:
       - '9092:9092'
+    volumes:
+      - ./.kafka/jaas.conf:/etc/kafka/kafka_server_jaas.conf
     environment:
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_BROKER_ID=1
-      - KAFKA_LISTENERS=PLAINTEXT://:9092
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
       - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
@@ -39,15 +45,49 @@ services:
       - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
       - KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS=5000
 
+      - KAFKA_SUPER_USERS=User:admin
+
+      - ZOOKEEPER_SASL_ENABLED=FALSE
+
+      - KAFKA_LISTENERS=AUTH://:9092
+      - KAFKA_ADVERTISED_LISTENERS=AUTH://kafka:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=AUTH:SASL_PLAINTEXT
+
+      - KAFKA_INTER_BROKER_LISTENER_NAME=AUTH
+      - KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL=SCRAM-SHA-512
+      - KAFKA_SASL_ENABLED_MECHANISMS=SCRAM-SHA-512
+      - KAFKA_LISTENER_NAME_AUTH_SASL_ENABLED_MECHANISMS=SCRAM-SHA-512
+      - KAFKA_OPTS=-Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf
+
     depends_on:
       zookeeper:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "sh", "-c", "nc -z -v -w5 localhost 9092" ]
+      test: ['CMD', 'sh', '-c', 'nc -z -v -w5 localhost 9092']
       interval: 5s
       timeout: 5s
       retries: 5
 
+  kafka-init:
+    image: 'confluentinc/cp-kafka:7.2.6'
+    container_name: artemis.kafka.init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command:
+      - bash
+      - -ec
+      - |
+        echo "Creating SCRAM admin user..."
+
+        kafka-configs \
+          --zookeeper zookeeper:2181 \
+          --alter \
+          --entity-type users \
+          --entity-name admin \
+          --add-config 'SCRAM-SHA-512=[password=admin]'
+
+        echo "Kafka SCRAM admin user ready."
   kafka2:
     image: 'confluentinc/cp-kafka:7.2.6'
     container_name: kafka2
@@ -69,7 +109,22 @@ services:
       zookeeper:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "sh", "-c", "nc -z -v -w5 localhost 9093" ]
+      test: ['CMD', 'sh', '-c', 'nc -z -v -w5 localhost 9093']
       interval: 5s
       timeout: 5s
       retries: 5
+  kafkaui:
+    container_name: kafkaui_local
+    image: provectuslabs/kafka-ui
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: inowattio.local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: SCRAM-SHA-512
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: org.apache.kafka.common.security.scram.ScramLoginModule required username="admin" password="admin";
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: inowattio.local
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://connect:8083
+    ports:
+      - 1234:8080
