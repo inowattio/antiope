@@ -1,0 +1,30 @@
+{
+    "acls": {
+        "antiope": [
+            {
+                "operations": [
+                    "Write",
+                    "Read",
+                    "Describe"
+                ],
+                "resource_type": "Topic",
+                "resource_name": "identity_inowattio_dev_user_events",
+                "pattern_type": "literal",
+                "target_host": "*",
+                "permission_type": "allow"
+            },
+            {
+                "operations": [
+                    "Write",
+                    "Read",
+                    "Describe"
+                ],
+                "resource_type": "Topic",
+                "resource_name": "identity_inowattio_qa_user_events",
+                "pattern_type": "literal",
+                "target_host": "*",
+                "permission_type": "allow"
+            }
+        ]
+    }
+}

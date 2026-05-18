@@ -16,7 +16,9 @@ services:
       KAFKA_SASL_MECHANISM: SCRAM-SHA-512
       KAFKA_SASL_JAAS_CONFIG: org.apache.kafka.common.security.scram.ScramLoginModule required username="admin" password="admin";
     command: start-dev
-
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
   zookeeper:
     image: 'confluentinc/cp-zookeeper:7.2.6'
     environment:
@@ -58,6 +60,8 @@ services:
       - KAFKA_SASL_ENABLED_MECHANISMS=SCRAM-SHA-512
       - KAFKA_LISTENER_NAME_AUTH_SASL_ENABLED_MECHANISMS=SCRAM-SHA-512
       - KAFKA_OPTS=-Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf
+      - KAFKA_AUTHORIZER_CLASS_NAME=kafka.security.authorizer.AclAuthorizer
+      - KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND=false
 
     depends_on:
       zookeeper:
@@ -67,13 +71,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
-  kafka-init:
-    image: 'confluentinc/cp-kafka:7.2.6'
-    container_name: artemis.kafka.init
-    depends_on:
-      kafka:
-        condition: service_healthy
     command:
       - bash
       - -ec
@@ -88,6 +85,8 @@ services:
           --add-config 'SCRAM-SHA-512=[password=admin]'
 
         echo "Kafka SCRAM admin user ready."
+        /etc/confluent/docker/run
+
   kafka2:
     image: 'confluentinc/cp-kafka:7.2.6'
     container_name: kafka2
@@ -113,6 +112,22 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    command:
+      - bash
+      - -ec
+      - |
+        echo "Creating SCRAM admin user..."
+
+        kafka-configs \
+          --zookeeper zookeeper:2181 \
+          --alter \
+          --entity-type users \
+          --entity-name admin \
+          --add-config 'SCRAM-SHA-512=[password=admin]'
+
+        echo "Kafka SCRAM admin user ready."
+        /etc/confluent/docker/run
+
   kafkaui:
     container_name: kafkaui_local
     image: provectuslabs/kafka-ui
@@ -128,3 +143,22 @@ services:
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://connect:8083
     ports:
       - 1234:8080
+  kafka-init:
+    image: 'confluentinc/cp-kafka:7.2.6'
+    container_name: antiope.kafka.init
+    user: '0'
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - SCRAM_MECHANISM=SCRAM-SHA-512
+      - DEFAULT_PARTITIONS=1
+      - DEFAULT_REPLICATION_FACTOR=1
+    volumes:
+      - ./.kafka/provision:/etc/kafka/provision
+    command:
+      - bash
+      - -ec
+      - |
+        /etc/kafka/provision/provision.sh
+        echo "Done."
