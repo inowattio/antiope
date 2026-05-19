@@ -29,17 +29,8 @@ To install the module to your keycloak server you have to configure the module a
 
 To run the image locally, follow these steps:
 
-1. Navigate to the directory where the builder.dockerfile is located:
-
-- `cd path/to/your/builder/directory .`
-  
-2. Build the Docker image with the name antiope using the keycloak.dockerfile file:
-
-- Build the keycloak image.
-  - `docker build -t antiope -f keycloak.dockerfile .`
-
-3. Start the Keycloak server using Docker Compose:
-   - `docker compose up keycloak`
+1. Start the Keycloak server using Docker Compose:
+   - `docker compose up keycloak --build`
 ### Accessing the Application
 
 Once you have the Keycloak and Kafka services running, you can access the following:
@@ -83,6 +74,14 @@ Below is an example of the configuration:
       KAFKA_SECURITY_PROTOCOL: SASL_PLAINTEXT
       KAFKA_SASL_MECHANISM: SCRAM-SHA-512
       KAFKA_SASL_JAAS_CONFIG: org.apache.kafka.common.security.scram.ScramLoginModule required username="antiope" password="antiope";
+
+### Background reconnect behavior
+
+If Keycloak starts before Kafka is ready, Antiope starts normally and reconnects to Kafka in the background. Producer readiness is verified through topic metadata lookup before a producer is marked usable.
+
+- `ANTIOPE_KAFKA_REFRESH_INTERVAL_MS`: delay between reconnect attempts in milliseconds. Default: `5000`
+
+If Kafka is still unavailable, Keycloak continues to run and the extension keeps retrying in the background. Events emitted before a producer becomes ready are currently skipped rather than buffered.
 
 ### Ci image
 
