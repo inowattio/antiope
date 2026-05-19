@@ -19,7 +19,7 @@ class KafkaEventListenerProviderTests {
 	private KafkaEventListenerProvider listener;
 	private KeycloakSessionHelper mockSessionHelper;
 	private KafkaConfigService kafkaConfigService;
-	private KafkaProducerInitializer kafkaProducerInitializer;
+	private KafkaProducerManager kafkaProducerManager;
 	private MockProducer<String, String> mockProducer;
 	//private Map<String, Object> kafkaProducerProperties = new HashMap<>();
 
@@ -27,7 +27,7 @@ class KafkaEventListenerProviderTests {
 	void setUp() throws Exception {
 		mockSessionHelper= Mockito.mock(KeycloakSessionHelper.class);
 		kafkaConfigService= Mockito.mock(KafkaConfigService.class);
-		kafkaProducerInitializer= Mockito.mock(KafkaProducerInitializer.class);
+		kafkaProducerManager = Mockito.mock(KafkaProducerManager.class);
 
 		mockProducer = new MockProducer<>(
 				true,                   // autoComplete
@@ -35,14 +35,14 @@ class KafkaEventListenerProviderTests {
 				new StringSerializer()  // valueSerializer
 		);
 
-		Mockito.when(kafkaProducerInitializer.getKafkaProducerByRealmName(Mockito.anyString())).thenReturn(mockProducer);
+		Mockito.when(kafkaProducerManager.getProducer(Mockito.anyString())).thenReturn(mockProducer);
 		Mockito.when(mockSessionHelper.getRealmName(Mockito.anyString())).thenReturn("realmTest");
 		Mockito.when(kafkaConfigService.getEvents()).thenReturn(new String[]{"REGISTER", "LOGIN"});
 		Mockito.when(kafkaConfigService.getTopicAdminEvents()).thenReturn("event");
-		Mockito.when(kafkaProducerInitializer.getKafkaTopicsByRealmName(Mockito.anyString())).thenReturn("testTopic");
+		Mockito.when(kafkaProducerManager.getTopic(Mockito.anyString())).thenReturn("testTopic");
 
 
-		listener = new KafkaEventListenerProvider(mockSessionHelper,kafkaConfigService, kafkaProducerInitializer);
+		listener = new KafkaEventListenerProvider(mockSessionHelper,kafkaConfigService, kafkaProducerManager);
 	}
 
 	@Test
@@ -76,7 +76,7 @@ class KafkaEventListenerProviderTests {
 
 	@Test
 	void shouldDoNothingWhenTopicAdminEventsIsNull() throws Exception {
-		listener = new KafkaEventListenerProvider(mockSessionHelper,kafkaConfigService, kafkaProducerInitializer);
+		listener = new KafkaEventListenerProvider(mockSessionHelper,kafkaConfigService, kafkaProducerManager);
 		AdminEvent event = new AdminEvent();
 		Mockito.when(kafkaConfigService.getTopicAdminEvents()).thenReturn(null);
 

@@ -79,7 +79,7 @@ Below is an example of the configuration:
 
 If Keycloak starts before Kafka is ready, Antiope starts normally and reconnects to Kafka in the background. Producer readiness is verified through topic metadata lookup before a producer is marked usable.
 
-- `ANTIOPE_KAFKA_REFRESH_INTERVAL_MS`: delay between reconnect attempts in milliseconds. Default: `5000`
+- `ANTIOPE_KAFKA_REFRESH_INTERVAL_MS`: delay between reconnect attempts in milliseconds. Default: `300000`
 
 If Kafka is still unavailable, Keycloak continues to run and the extension keeps retrying in the background. Events emitted before a producer becomes ready are currently skipped rather than buffered.
 

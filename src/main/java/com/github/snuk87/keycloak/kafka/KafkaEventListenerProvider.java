@@ -2,8 +2,6 @@ package com.github.snuk87.keycloak.kafka;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -20,12 +18,6 @@ import org.keycloak.events.admin.AdminEvent;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.RealmProvider;
-import org.keycloak.models.utils.KeycloakModelUtils;
-import java.util.concurrent.atomic.AtomicReference;
-import com.fasterxml.jackson.databind.JsonNode;
 
 public class KafkaEventListenerProvider implements EventListenerProvider {
 
@@ -34,15 +26,14 @@ public class KafkaEventListenerProvider implements EventListenerProvider {
 	private final ObjectMapper mapper;
 	private final KafkaConfigService kafkaConfigService;
 	private final KeycloakSessionHelper keycloakSessionHelper;
-	private final KafkaProducerInitializer kafkaProducerInitializer;
+	private final KafkaProducerManager kafkaProducerManager;
 
-	public KafkaEventListenerProvider(KeycloakSessionHelper keycloakSessionHelper, KafkaConfigService kafkaConfigService, KafkaProducerInitializer kafkaProducerInitializer) {
+	public KafkaEventListenerProvider(KeycloakSessionHelper keycloakSessionHelper, KafkaConfigService kafkaConfigService, KafkaProducerManager kafkaProducerManager) {
 
 		this.events = new ArrayList<>();
         this.keycloakSessionHelper =  keycloakSessionHelper;
-		this.kafkaProducerInitializer = kafkaProducerInitializer;
+		this.kafkaProducerManager = kafkaProducerManager;
 		this.kafkaConfigService = kafkaConfigService;
-		this.kafkaProducerInitializer.initialize();
 		mapper = new ObjectMapper();
 
 		for (String event : kafkaConfigService.getEvents()) {
@@ -59,13 +50,25 @@ public class KafkaEventListenerProvider implements EventListenerProvider {
 	private void produceEvent(String eventAsString, String realmName)
 			throws InterruptedException, ExecutionException, TimeoutException {
 
-		String topic = this.kafkaProducerInitializer.getKafkaTopicsByRealmName(realmName);
-		ProducerRecord<String, String> record = new ProducerRecord<>(topic, eventAsString);
-		Future<RecordMetadata> metaData = this.kafkaProducerInitializer.getKafkaProducerByRealmName(realmName).send(record);
+		String topic = this.kafkaProducerManager.getTopic(realmName);
+		
+		if (topic == null) {
+			LOG.warn("No Kafka topic configured for realm: " + realmName);
+			return;
+		}
 
-		RecordMetadata recordMetadata = metaData.get(30, TimeUnit.SECONDS);
+		Producer<String, String> producer = this.kafkaProducerManager.getProducer(realmName);
+		if (producer == null) {
+			LOG.warn("Kafka producer not ready for realm: " + realmName);
+			return;
+		}
+
+		ProducerRecord<String, String> record = new ProducerRecord<>(topic, eventAsString);
+		Future<RecordMetadata> metaData = producer.send(record);
+
+		metaData.get(30, TimeUnit.SECONDS);
 		LOG.info("TOPIC: " + topic);
-		LOG.info("PRODUCER: " +   this.kafkaProducerInitializer.getKafkaProducerByRealmName(realmName));
+		LOG.info("PRODUCER: " + producer);
 		LOG.info("REALM_NAME: " + realmName);
 	}
 
