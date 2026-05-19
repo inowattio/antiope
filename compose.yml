@@ -11,10 +11,10 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: admin
       KAFKA_CLIENT_ID: keycloak
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      ANTIOPE_CONFIG: Wwp7ICJyZWFsbU5hbWUiOiAicmVhbG0xIiwKICAiYnJva2VySXAiOiAia2Fma2EiLAogICJicm9rZXJQb3J0IjogIjkwOTIiLAogICJ0b3BpYyI6ICJ0b3BpYzEiLAoiY2xpZW50SWQiOiAicmVhbG0xIgoKfSwKeyAicmVhbG1OYW1lIjogInJlYWxtMiIsCiAgImJyb2tlcklwIjogImthZmthMiIsCiAgImJyb2tlclBvcnQiOiAiOTA5MyIsCiAgInRvcGljIjogInRvcGljMix0b3BpYzMiLAoiY2xpZW50SWQiOiAicmVhbG0yIiAgIAp9Cl0K
+      ANTIOPE_CONFIG: Wwp7ICJyZWFsbU5hbWUiOiAicmVhbG0xIiwKICAiYnJva2VySXAiOiAia2Fma2EiLAogICJicm9rZXJQb3J0IjogIjkwOTIiLAogICJ0b3BpYyI6ICJpZGVudGl0eV9pbm93YXR0aW9fZGV2X3VzZXJfZXZlbnRzIiwKImNsaWVudElkIjogInJlYWxtMSIKCn0sCnsgInJlYWxtTmFtZSI6ICJyZWFsbTIiLAogICJicm9rZXJJcCI6ICJrYWZrYTIiLAogICJicm9rZXJQb3J0IjogIjkwOTMiLAogICJ0b3BpYyI6ICJpZGVudGl0eV9pbm93YXR0aW9fcWFfdXNlcl9ldmVudHMiLAoiY2xpZW50SWQiOiAicmVhbG0yIiAgIAp9Cl0K
       KAFKA_SECURITY_PROTOCOL: SASL_PLAINTEXT
       KAFKA_SASL_MECHANISM: SCRAM-SHA-512
-      KAFKA_SASL_JAAS_CONFIG: org.apache.kafka.common.security.scram.ScramLoginModule required username="admin" password="admin";
+      KAFKA_SASL_JAAS_CONFIG: org.apache.kafka.common.security.scram.ScramLoginModule required username="antiope" password="antiope";
     command: start-dev
     depends_on:
       kafka-init:
