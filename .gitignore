@@ -6,3 +6,4 @@
 .idea/
 *.iml
 *.iws
+.kafka/provision/.provision-state.json

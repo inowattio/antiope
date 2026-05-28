@@ -3,6 +3,9 @@ package com.github.snuk87.keycloak.kafka;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.keycloak.Config;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.Base64;
 
@@ -61,5 +64,18 @@ public class KafkaConfigService {
     public String[] getEvents() {
         return events;
     }
+
+    public List<KafkaRealmConfig> getKafkaRealmConfig() {
+        if (configJson == null || !configJson.isArray()) {
+            return Collections.emptyList();
+        }
+
+        List<KafkaRealmConfig> kafkaRealmConfig = new ArrayList<>();
+        for (JsonNode node : configJson) {
+            kafkaRealmConfig.add(KafkaRealmConfig.from(node));
+        }
+        return kafkaRealmConfig;
+    }
+
 
 }

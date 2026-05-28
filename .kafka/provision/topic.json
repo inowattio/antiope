@@ -1,0 +1,10 @@
+{
+    "topics": [
+        {
+            "name": "identity_inowattio_dev_user_events"
+        },
+        {
+            "name": "identity_inowattio_qa_user_events"
+        }
+    ]
+}

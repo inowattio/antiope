@@ -17,14 +17,15 @@ public class KafkaEventListenerProviderFactory implements EventListenerProviderF
     private KafkaEventListenerProvider instance;
 
     private Map<String, Object> kafkaProducerProperties;
-
-    KafkaConfigService kafkaConfigService;
+    private KafkaConfigService kafkaConfigService;
+    private KafkaProducerManager kafkaProducerManager;
+    private KafkaProducerFactory kafkaProducerFactory;
 
     @Override
     public EventListenerProvider create(KeycloakSession session) {
-        if (instance == null) {
-            instance = new KafkaEventListenerProvider(new KeycloakSessionHelper(session), kafkaConfigService,
-                     new KafkaProducerInitializer(new KafkaStandardProducerFactory(),kafkaConfigService, kafkaProducerProperties));
+        if(instance == null) {
+            instance = new KafkaEventListenerProvider(new KeycloakSessionHelper(session), 
+            kafkaConfigService, kafkaProducerManager);
         }
         return instance;
     }
@@ -39,15 +40,22 @@ public class KafkaEventListenerProviderFactory implements EventListenerProviderF
         LOG.info("Init kafka module ...");
         kafkaConfigService = new KafkaConfigService(config);
         kafkaProducerProperties = KafkaProducerConfig.init(config);
+        kafkaProducerFactory = new KafkaStandardProducerFactory();
     }
 
     @Override
-    public void postInit(KeycloakSessionFactory arg0) {
-        // ignore
+    public void postInit(KeycloakSessionFactory factory) {
+        kafkaProducerManager = new KafkaProducerManager(
+                kafkaProducerFactory,
+                kafkaConfigService,
+                kafkaProducerProperties);
+        kafkaProducerManager.start();
     }
 
     @Override
     public void close() {
-        // ignore
+        if (kafkaProducerManager != null) {
+            kafkaProducerManager.close();
+        }
     }
 }
